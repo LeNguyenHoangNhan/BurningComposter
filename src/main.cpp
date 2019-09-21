@@ -9,7 +9,7 @@
 
 #define TS_PIN 15
 #define HS_PIN 35
-#define LCD_ADDR 0x2F
+#define LCD_ADDR 0x27
 #define LCD_ROW 2
 #define LCD_COL 16
 
@@ -31,9 +31,10 @@ HumiditySensor hs(HS_PIN);
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COL, LCD_ROW);
 
 void SendData() {
-    StaticJsonDocument<200> data;
+    StaticJsonDocument<500> data;
     data["temp"] = temp;
     data["humidity"] = humd;
+    data["uuid"] = UUID;
     http.begin("uphan.makerspace.nqdclub.com", 80, "/postjson");
     http.addHeader("Content-Type", "application/json");
     String posthttp;
@@ -45,18 +46,27 @@ void SendData() {
     http.end();
 }
 
-void WiFiConnectedLoop() {
-    WiFiDisconnectedLoop();
-    SendData();
-}
-
 void WiFiDisconnectedLoop() {
-    temp = ts.getTempCByIndex(0);
+    ts.requestTemperatures();
+    delay(500);
+    float prevtemp = temp;
+    if ((temp = ts.getTempCByIndex(0)) == -127) {
+        temp = prevtemp;
+    } 
     humd = hs.readSensorPercent();
     Serial.print("Temperature: ");
     Serial.println(temp);
     Serial.print("Moisture: ");
     Serial.println(humd);
+    lcd.setCursor(6, 0);
+    lcd.print(temp);
+    lcd.setCursor(6, 1);
+    lcd.print(humd);
+}
+
+void WiFiConnectedLoop() {
+    WiFiDisconnectedLoop();
+    SendData();
 }
 
 void WiFiEvent(WiFiEvent_t event) {
@@ -102,7 +112,10 @@ void setup() {
     lcd.print("Hello, world!");
     delay(1000);
     lcd.clear();
-
+    lcd.setCursor(0, 0);
+    lcd.print("Temp: ");
+    lcd.setCursor(0, 1);
+    lcd.print("Humd: ");
     WiFi.disconnect();
     WiFi.mode(WIFI_MODE_STA);
     WiFi.onEvent(WiFiEvent);
@@ -114,4 +127,5 @@ void loop() {
     } else {
         WiFiDisconnectedLoop();
     }
+    delay(1000);
 }
