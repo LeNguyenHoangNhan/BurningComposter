@@ -117,7 +117,6 @@ void setup() {
         }
         Serial.println("Read config file done");
     } else {
-
     }
         Serial.println("AP_SSID: " + AP_SSID);
         Serial.println("AP_PASS: " + AP_PASS);
