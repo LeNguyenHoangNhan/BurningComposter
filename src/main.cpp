@@ -85,8 +85,12 @@ int WriteJsonFile(const char *target_field, const char *target_value,
     return (-256);
   }
 }
-void WiFiConfigJsonHandler(AsyncWebServerRequest *request, JsonVariant *json) {
-    
+void WiFiConfigJsonHandler(AsyncWebServerRequest *request,
+                           ArduinoJson::JsonVariant &json) {
+  ArduinoJson::JsonObject jsonObj = json.as<ArduinoJson::JsonObject>();
+  String ssid = jsonObj["ssid"].as<String>();
+  String pass = jsonObj["pass"].as<String>();
+  Serial.printf("Recieved SSID: %s, PASS: %s\n", ssid.c_str(), pass.c_str());
 }
 void lcd_err_clr_pr(LiquidCrystal_I2C &lcd, const char *content) {
   lcd.clear();
@@ -175,6 +179,9 @@ void setup() {
     server.on("/wificonfig", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(SPIFFS, "/wificonfig.html", "text/html", false, nullptr);
     });
+    AsyncCallbackJsonWebHandler *wfcfJsonHanler =
+        new AsyncCallbackJsonWebHandler("/configWifi", WiFiConfigJsonHandler);
+    server.addHandler(wfcfJsonHanler);
     server.begin();
   }
 }
