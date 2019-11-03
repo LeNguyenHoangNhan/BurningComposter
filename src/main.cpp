@@ -52,7 +52,7 @@ int ReadJsonFile(String &target, const char *path, const char *field) {
 int WriteJsonFile(const char *target_field, const char *target_value,
                   const char *file_path) {
   File file_r = SPIFFS.open(file_path, "r");
-  if (file_r) {
+  if (!file_r) {
     Serial.println("Error open file");
     file_r.close();
     return (-127);
@@ -68,14 +68,15 @@ int WriteJsonFile(const char *target_field, const char *target_value,
     return (-1);
   }
   doc[target_field] = target_value;
-  ArduinoJson::serializeJsonPretty(doc, file_content);
-  Serial.println("Content to be write: " + file_content);
+  String file_content_write = "";
+  ArduinoJson::serializeJsonPretty(doc, file_content_write);
+  Serial.println("Content to be write: " + file_content_write);
   SPIFFS.remove(file_path);
   File file_w = SPIFFS.open(file_path, "w");
-  file_w.print(file_content);
+  file_w.print(file_content_write);
   file_w.close();
   File file_cs = SPIFFS.open(file_path, "r");
-  if (file_cs.readString() == file_content) {
+  if (file_cs.readString() == file_content_write) {
     Serial.println("Check sum OK");
     file_cs.close();
     return 0;
@@ -84,13 +85,6 @@ int WriteJsonFile(const char *target_field, const char *target_value,
     file_cs.close();
     return (-256);
   }
-}
-void WiFiConfigJsonHandler(AsyncWebServerRequest *request,
-                           ArduinoJson::JsonVariant &json) {
-  ArduinoJson::JsonObject jsonObj = json.as<ArduinoJson::JsonObject>();
-  String ssid = jsonObj["ssid"].as<String>();
-  String pass = jsonObj["pass"].as<String>();
-  Serial.printf("Recieved SSID: %s, PASS: %s\n", ssid.c_str(), pass.c_str());
 }
 void lcd_err_clr_pr(LiquidCrystal_I2C &lcd, const char *content) {
   lcd.clear();
@@ -121,12 +115,12 @@ void setup() {
       delay(1000);
       AP_PASS = "12345678";
     }
-    if (ReadJsonFile(STA_PASS, "/wfcfg.json", "STA_SSID")) {
+    if (ReadJsonFile(STA_SSID, "/wfcfg.json", "STA_SSID")) {
       lcd_err_clr_pr(lcd, "003");
       delay(1000);
       STA_SSID = "hNiP";
     }
-    if (ReadJsonFile(STA_SSID, "/wfcfg.json", "STA_PASS")) {
+    if (ReadJsonFile(STA_PASS, "/wfcfg.json", "STA_PASS")) {
       lcd_err_clr_pr(lcd, "004");
       delay(1000);
       STA_PASS = "LunarQueen12273";
@@ -174,13 +168,32 @@ void setup() {
                     nullptr);
     });
     server.on("/wificonfig.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(SPIFFS, "/wificonfig.html", "text/html", false, nullptr);
+      request->send(SPIFFS, "/wificonfig.html", "text/html", false, [] (const String &pp_temp) -> String {
+        if (pp_temp == "SSID") {
+          return STA_SSID;
+        } else if (pp_temp == "PASS") {
+          return STA_PASS;
+        } else {
+          return String();
+        }
+      });
     });
     server.on("/wificonfig", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(SPIFFS, "/wificonfig.html", "text/html", false, nullptr);
     });
     AsyncCallbackJsonWebHandler *wfcfJsonHanler =
-        new AsyncCallbackJsonWebHandler("/configWifi", WiFiConfigJsonHandler);
+        new AsyncCallbackJsonWebHandler(
+            "/wificonfig", [](AsyncWebServerRequest *request,
+                              ArduinoJson::JsonVariant &jsonVar) {
+              ArduinoJson::JsonObject jsonObj =
+                  jsonVar.as<ArduinoJson::JsonObject>();
+              String ssid = jsonObj["ssid"].as<String>();
+              String pass = jsonObj["pass"].as<String>();
+              Serial.printf("Recieved SSID: %s\n", ssid.c_str());
+              Serial.printf("Recieved PASS: %s\n", pass.c_str());
+              WriteJsonFile("STA_SSID", ssid.c_str(), "/wfcfg.json");
+              WriteJsonFile("STA_PASS", pass.c_str(), "/wfcfg.json");
+            });
     server.addHandler(wfcfJsonHanler);
     server.begin();
   }
