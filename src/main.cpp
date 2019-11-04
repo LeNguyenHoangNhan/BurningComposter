@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <AsyncJson.h>
-#include <AsyncTCP.h>
 #include <DallasTemperature.h>
 #include <ESPAsyncWebServer.h>
 #include <FS.h>
@@ -12,6 +11,7 @@
 
 #include <ArduinoJson.hpp>
 
+#include "error_lcd.hpp"
 #include "sensors.hpp"
 
 #define TS_PIN (int)15
@@ -86,42 +86,38 @@ int WriteJsonFile(const char *target_field, const char *target_value,
     return (-256);
   }
 }
-void lcd_err_clr_pr(LiquidCrystal_I2C &lcd, const char *content) {
+template <typename T>
+void lcd_err_clr_pr(LiquidCrystal_I2C &lcd, T content) {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Error:");
   lcd.setCursor(0, 1);
   lcd.print(content);
 }
-void lcd_err_clr_pr(LiquidCrystal_I2C &lcd, String content) {
-  lcd_err_clr_pr(lcd, content.c_str());
-}
-void lcd_err_clr_pr(LiquidCrystal_I2C &lcd, int err_code) {
-  lcd_err_clr_pr(lcd, String(err_code).c_str());
-}
-void lcd_clr_pr() {}
+template <typename T>
+void lcd_clr_pr(LiquidCrystal_I2C &lcd, T content) {}
 void setup() {
   Serial.begin(9600);
   if (SPIFFS.begin()) {
     SPIFFS_OK = true;
     Serial.println("Reading Config File");
     if (ReadJsonFile(AP_SSID, "/wfcfg.json", "AP_SSID")) {
-      lcd_err_clr_pr(lcd, "001");
+      lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_AP_SSID);
       delay(1000);
       AP_SSID = "WiFi_Config";
     }
     if (ReadJsonFile(AP_PASS, "/wfcfg.json", "AP_PASS")) {
-      lcd_err_clr_pr(lcd, "002");
+      lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_AP_PASS);
       delay(1000);
       AP_PASS = "12345678";
     }
     if (ReadJsonFile(STA_SSID, "/wfcfg.json", "STA_SSID")) {
-      lcd_err_clr_pr(lcd, "003");
+      lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_SSID);
       delay(1000);
       STA_SSID = "hNiP";
     }
     if (ReadJsonFile(STA_PASS, "/wfcfg.json", "STA_PASS")) {
-      lcd_err_clr_pr(lcd, "004");
+      lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_PASS);
       delay(1000);
       STA_PASS = "LunarQueen12273";
     }
@@ -168,15 +164,16 @@ void setup() {
                     nullptr);
     });
     server.on("/wificonfig.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(SPIFFS, "/wificonfig.html", "text/html", false, [] (const String &pp_temp) -> String {
-        if (pp_temp == "SSID") {
-          return STA_SSID;
-        } else if (pp_temp == "PASS") {
-          return STA_PASS;
-        } else {
-          return String();
-        }
-      });
+      request->send(SPIFFS, "/wificonfig.html", "text/html", false,
+                    [](const String &pp_temp) -> String {
+                      if (pp_temp == "SSID") {
+                        return STA_SSID;
+                      } else if (pp_temp == "PASS") {
+                        return STA_PASS;
+                      } else {
+                        return String();
+                      }
+                    });
     });
     server.on("/wificonfig", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(SPIFFS, "/wificonfig.html", "text/html", false, nullptr);
