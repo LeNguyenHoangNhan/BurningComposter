@@ -43,6 +43,7 @@ li.nav_bar_li a.nav_bar_item:hover {
     text-align: center;
     color: gray;
 }
+
 .body {
     font-family: 'Operator Mono SSm Lig';
 }
@@ -52,4 +53,7 @@ li.nav_bar_li a.nav_bar_item:hover {
 }
 .manual {
     text-align: left;
+}
+.story {
+    margin-left: 40px;
 }
