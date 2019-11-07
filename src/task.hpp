@@ -4,7 +4,19 @@
 #include <freertos/FreeRTOS.h>
 #include <Arduino.h>
 #include <freertos/task.h>
+#include <freertos/projdefs.h>
+#include "sensors.hpp"
+#include <DallasTemperature.h>
+#include <OneWire.h>
+#include "lcd.hpp"
+#include <WiFi.h>
+
+static TaskHandle_t RDSSTSK_handler;
+static TaskHandle_t DISPLAY_handler;
+static TaskHandle_t SENDDATA_hanlder;
 
 
+
+int init_task();
 
 #endif
