@@ -124,6 +124,11 @@ void setup() {
             delay(1000);
             STA_PASS = "LunarQueen12273";
         }
+        if (ReadJsonFile(UUID, "/wfcfg.json", "UUID")) {
+            lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_PASS);
+            delay(1000);
+            UUID = "abcdefgh";
+        }
         Serial.println("Read config file done");
     }
     Serial.println("AP_SSID: " + AP_SSID);
@@ -212,9 +217,9 @@ void loop() {
 
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.printf("Humd: %f", humd);
+    lcd.printf("Humd: %.2f", humd);
     lcd.setCursor(0, 1);
-    lcd.printf("Temp: %f", temp);
+    lcd.printf("Temp: %.2f", temp);
     vTaskDelay(2000);
     lcd.clear();
     lcd.setCursor(0, 0);

@@ -2,8 +2,13 @@
 
 extern LiquidCrystal_I2C lcd;
 extern OneWire onewire;
-HumiditySensor hs(35);
+extern String UUID;
+extern
+
+    HumiditySensor hs(35);
 DallasTemperature ts(&onewire);
+ArduinoJson::StaticJsonDocument<512> jsonDoc;
+HTTPClient http;
 
 float humd{0.0};
 float temp{0.0};
@@ -16,7 +21,7 @@ int init_task() {
                 ts.requestTemperatures();
                 humd = hs.readSensorPercent();
                 temp = ts.getTempCByIndex(0);
-                Serial.printf("Temp: %f, Humd: %f\n", temp, humd);
+                Serial.printf("Temp: %.2f, Humd: %.2f\n", temp, humd);
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
             }
             vTaskDelete(NULL);
@@ -28,7 +33,22 @@ int init_task() {
     BaseType_t tsk2_code = xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
-                vTaskDelay(1000);
+                vTaskDelay(6000);
+                if (WiFi.isConnected() == true && WiFi.status() == WL_CONNECTED) {
+                    Serial.println("Start send data to server");
+                    jsonDoc["uuid"] = UUID;
+                    jsonDoc["temp"] = temp;
+                    jsonDoc["humidity"] = humd;
+                    http.begin("nqdbeta.tk", 80, "/giatricambien");
+                    http.addHeader("Content-Type", "application/json");
+                    char buffer[512];
+                    ArduinoJson::serializeJson(jsonDoc, buffer);
+                    Serial.println(buffer);
+                    int httpCode = http.POST(buffer);
+                    Serial.print("httpCode: ");
+                    Serial.println(httpCode);
+                    http.end();
+                }
             }
             vTaskDelete(NULL);
         },
