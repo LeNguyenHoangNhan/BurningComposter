@@ -2,24 +2,26 @@
 
 extern LiquidCrystal_I2C lcd;
 extern OneWire onewire;
-HumiditySensor hs;
+HumiditySensor hs(35);
 DallasTemperature ts(&onewire);
 
-float humd;
-float temp;
+float humd{0.0};
+float temp{0.0};
 
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 int init_task() {
-    BaseType_t tsk1_code = xTaskCreate(
+    BaseType_t tsk1_code = xTaskCreatePinnedToCore(
         [](void *pvParameters) {
             for (;;) {
+                ts.requestTemperatures();
                 humd = hs.readSensorPercent();
                 temp = ts.getTempCByIndex(0);
+                Serial.printf("Temp: %f, Humd: %f\n", temp, humd);
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
             }
             vTaskDelete(NULL);
         },
-        "RDSSTSK", 4096, nullptr, 10, &RDSSTSK_handler);
+        "RDSSTSK", 4096, nullptr, 10, &RDSSTSK_handler, 1);
     if (tsk1_code != pdPASS) {
         return -1;
     }

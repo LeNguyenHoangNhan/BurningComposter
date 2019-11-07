@@ -202,6 +202,7 @@ void setup() {
         server.begin();
     }
     ts.begin();
+    Serial.printf("Sensor num: %d\n", ts.getDeviceCount());
     init_lcd();
     init_task();
 }
@@ -210,28 +211,17 @@ void loop() {
 #ifdef USE_LOOP
 
     lcd.clear();
-
     lcd.setCursor(0, 0);
-
     lcd.printf("Humd: %f", humd);
-
     lcd.setCursor(0, 1);
-
     lcd.printf("Temp: %f", temp);
-
-    delay(1000);
-
+    vTaskDelay(2000);
     lcd.clear();
-
     lcd.setCursor(0, 0);
-
     lcd.print("IP ADDRESS");
-
-    lcd.setCursor(0, 1);
-
+    lcd.setCursor(0, 1);    
     lcd.print(WiFi.localIP());
-
-    delay(2000);
+    vTaskDelay(2000);
 
 #endif
 }
