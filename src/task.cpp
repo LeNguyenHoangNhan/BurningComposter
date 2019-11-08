@@ -33,7 +33,7 @@ int init_task() {
     BaseType_t tsk2_code = xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
-                vTaskDelay(6000);
+                vTaskDelay(60000);
                 if (WiFi.isConnected() == true && WiFi.status() == WL_CONNECTED) {
                     Serial.println("Start send data to server");
                     jsonDoc["uuid"] = UUID;
