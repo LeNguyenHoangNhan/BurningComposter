@@ -1,11 +1,17 @@
 #include "task.hpp"
+#define USE_STATIC_MEMORY true
+
 
 extern LiquidCrystal_I2C lcd;
 extern OneWire onewire;
-extern String UUID;
-extern
 
-    HumiditySensor hs(35);
+
+#if USE_STATIC_MEMORY
+extern char *UUID_char;
+#else
+extern String UUID;
+#endif
+HumiditySensor hs(35);
 DallasTemperature ts(&onewire);
 ArduinoJson::StaticJsonDocument<512> jsonDoc;
 HTTPClient http;
@@ -30,13 +36,15 @@ int init_task() {
     if (tsk1_code != pdPASS) {
         return -1;
     }
+
+    #if USE_STATIC_MEMORY
     BaseType_t tsk2_code = xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
                 vTaskDelay(60000);
                 if (WiFi.isConnected() == true && WiFi.status() == WL_CONNECTED) {
                     Serial.println("Start send data to server");
-                    jsonDoc["uuid"] = UUID;
+                    jsonDoc["uuid"] = UUID_char;
                     jsonDoc["temp"] = temp;
                     jsonDoc["humidity"] = humd;
                     http.begin("nqdbeta.tk", 80, "/giatricambien");
@@ -52,10 +60,38 @@ int init_task() {
             }
             vTaskDelete(NULL);
         },
-        "DSPLYTSK", 4096, nullptr, 20, &DISPLAY_handler);
+        "SNDDTTSK", 4096, nullptr, 20, &DISPLAY_handler);
     if (tsk2_code != pdPASS) {
         return -2;
     }
+    #else
+        BaseType_t tsk2_code = xTaskCreate(
+        [](void *pvParameters) {
+            for (;;) {
+                vTaskDelay(60000);
+                if (WiFi.isConnected() == true && WiFi.status() == WL_CONNECTED) {
+                    Serial.println("Start send data to server");
+                    jsonDoc["uuid"] =UUID;
+                    jsonDoc["temp"] = temp;
+                    jsonDoc["humidity"] = humd;
+                    http.begin("nqdbeta.tk", 80, "/giatricambien");
+                    http.addHeader("Content-Type", "application/json");
+                    char buffer[512];
+                    ArduinoJson::serializeJson(jsonDoc, buffer);
+                    Serial.println(buffer);
+                    int httpCode = http.POST(buffer);
+                    Serial.print("httpCode: ");
+                    Serial.println(httpCode);
+                    http.end();
+                }
+            }
+            vTaskDelete(NULL);
+        },
+        "SNDDTTSK", 4096, nullptr, 20, &DISPLAY_handler);
+    if (tsk2_code != pdPASS) {
+        return -2;
+    }
+    #endif
 
     return 0;
 }

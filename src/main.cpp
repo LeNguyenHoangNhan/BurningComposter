@@ -8,6 +8,8 @@
 #include <OneWire.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
+#include <wchar.h>
+
 #include <ArduinoJson.hpp>
 
 #include "error_lcd.hpp"
@@ -18,11 +20,19 @@
 #define TS_PIN (int)15
 #define HS_PIN (int)35
 
+#define USE_STATIC_MEMORY true
+
 extern HumiditySensor hs;
 extern DallasTemperature ts;
 OneWire onewire(TS_PIN);
 
+#if USE_STATIC_MEMORY
+char AP_SSID_char[64], AP_PASS_char[64], STA_SSID_char[64], STA_PASS_char[256],
+    UUID_char[64];
+#else
 String AP_SSID, AP_PASS, STA_SSID, STA_PASS, UUID;
+#endif
+
 AsyncWebServer server(80);
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_ROW, LCD_COL);
 
@@ -59,6 +69,28 @@ int ReadJsonFile(String &target, const char *path, const char *field) {
         return -1;
     }
     target = doc[field].as<String>();
+    return 0;
+}
+/** Implement JSON reader function using stack allocated memory
+ *  !!CAUTION!! USE WITH CARE, NOT TESTED MUCH
+ * !!CAUTION!! strcpy is used here, buffer overflow can happen
+ */
+int ReadJsonFile(char *target, const char *path, const char *field) {
+    Serial.printf("Reading field:%s from file: %s\n", field, path);
+    File file = SPIFFS.open("/wfcfg.json", "r");
+    ArduinoJson::StaticJsonDocument<1024> doc;
+    ArduinoJson::DeserializationError err =
+        ArduinoJson::deserializeJson(doc, file);
+    if (err) {
+        Serial.println("Error parsing JSON");
+        file.close();
+        return -127;
+    }
+    const char *field_value = doc[field];
+    Serial.printf("Field value: %s\n", field_value);
+    strcpy(target, field_value); // Consider replace strcpy with snprinf
+    Serial.printf("Target value: %s\n", target);
+    file.close();
     return 0;
 }
 int WriteJsonFile(const char *target_field, const char *target_value,
@@ -103,7 +135,35 @@ void setup() {
     Serial.begin(9600);
     if (SPIFFS.begin()) {
         SPIFFS_OK = true;
+
         Serial.println("Reading Config File");
+#if USE_STATIC_MEMORY
+        if (ReadJsonFile(AP_SSID_char, "/wfcfg.json", "AP_SSID")) {
+            lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_AP_SSID);
+            delay(1000);
+            strcpy(AP_SSID_char, "WiFi_Config");
+        }
+        if (ReadJsonFile(AP_PASS_char, "/wfcfg.json", "AP_PASS")) {
+            lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_AP_PASS);
+            delay(1000);
+            strcpy(AP_PASS_char, "12345678");
+        }
+        if (ReadJsonFile(STA_SSID_char, "/wfcfg.json", "STA_SSID")) {
+            lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_SSID);
+            delay(1000);
+            strcpy(STA_SSID_char, "hNiP");
+        }
+        if (ReadJsonFile(STA_PASS_char, "/wfcfg.json", "STA_PASS")) {
+            lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_PASS);
+            delay(1000);
+            strcpy(STA_PASS_char, "LunarQueen12273");
+        }
+        if (ReadJsonFile(UUID_char, "/wfcfg.json", "UUID")) {
+            lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_PASS);
+            delay(1000);
+            strcpy(UUID_char, "abcdefgh");
+        }
+#else
         if (ReadJsonFile(AP_SSID, "/wfcfg.json", "AP_SSID")) {
             lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_AP_SSID);
             delay(1000);
@@ -129,18 +189,35 @@ void setup() {
             delay(1000);
             UUID = "abcdefgh";
         }
+#endif
         Serial.println("Read config file done");
     }
-    Serial.println("AP_SSID: " + AP_SSID);
-    Serial.println("AP_PASS: " + AP_PASS);
-    Serial.println("STA_SSID: " + STA_SSID);
-    Serial.println("STA_PASS: " + STA_PASS);
+#if USE_STATIC_MEMORY
+    Serial.printf("AP_SSID: %s\n", AP_SSID_char);
+    Serial.printf("AP_PASS: %s\n", AP_PASS_char);
+    Serial.printf("STA_SSID: %s\n", STA_SSID_char);
+    Serial.printf("STA_PASS: %s\n", STA_PASS_char);
     WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_MODE_APSTA);
-    WiFi.begin(STA_SSID.c_str(), STA_PASS.c_str());
-    WiFi.softAP(AP_SSID.c_str(), AP_PASS.c_str());
+    WiFi.begin(STA_PASS_char, STA_PASS_char);
+    WiFi.softAP(AP_SSID_char, AP_PASS_char);
     WiFi.softAPConfig(IPAddress(172, 16, 0, 1), IPAddress(172, 16, 0, 1),
                       IPAddress(255, 255, 255, 0));
+#else
+    Serial.println("AP_SSID: " + (USE_STATIC_MEMORY ? AP_SSID_char : AP_SSID));
+    Serial.println("AP_PASS: " + (USE_STATIC_MEMORY ? AP_PASS_char : AP_PASS));
+    Serial.println("STA_SSID: " +
+                   (USE_STATIC_MEMORY ? STA_SSID_char : STA_SSID));
+    Serial.println("STA_PASS: " +
+                   (USE_STATIC_MEMORY ? STA_PASS_char : STA_PASS));
+    WiFi.setAutoReconnect(true);
+    WiFi.mode(WIFI_MODE_APSTA);
+    WiFi.begin(USE_STATIC_MEMORY ? STA_PASS_char : STA_SSID.c_str(),
+               USE_STATIC_MEMORY ? STA_PASS_char : STA_PASS.c_str());
+    WiFi.softAP(USE_STATIC_MEMORY? AP_SSID_char : AP_SSID.c_str(), USE_STATIC_MEMORY? AP_PASS_char, AP_PASS.c_str());
+    WiFi.softAPConfig(IPAddress(172, 16, 0, 1), IPAddress(172, 16, 0, 1),
+                      IPAddress(255, 255, 255, 0));
+#endif
     if (SPIFFS_OK) {
         server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
             request->send(SPIFFS, "/index.html", "text/html", false, nullptr);
@@ -173,19 +250,21 @@ void setup() {
             request->send(SPIFFS, "/wfcf.js", "application/javascript", false,
                           nullptr);
         });
+#if USE_STATIC_MEMORY
         server.on("/wificonfig.html", HTTP_GET,
                   [](AsyncWebServerRequest *request) {
                       request->send(SPIFFS, "/wificonfig.html", "text/html",
                                     false, [](const String &pp_temp) -> String {
                                         if (pp_temp == "SSID") {
-                                            return STA_SSID;
+                                            return String(STA_SSID_char);
                                         } else if (pp_temp == "PASS") {
-                                            return STA_PASS;
+                                            return String(STA_PASS_char);
                                         } else {
                                             return String();
                                         }
                                     });
                   });
+#endif
         server.on("/wificonfig", HTTP_GET, [](AsyncWebServerRequest *request) {
             request->send(SPIFFS, "/wificonfig.html", "text/html", false,
                           nullptr);
@@ -224,7 +303,7 @@ void loop() {
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("IP ADDRESS");
-    lcd.setCursor(0, 1);    
+    lcd.setCursor(0, 1);
     lcd.print(WiFi.localIP());
     vTaskDelay(2000);
 
