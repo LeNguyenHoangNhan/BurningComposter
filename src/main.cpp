@@ -73,9 +73,8 @@ int ReadJsonFile(String &target, const char *path, const char *field) {
 }
 /** Implement JSON reader function using stack allocated memory
  *  !!CAUTION!! USE WITH CARE, NOT TESTED MUCH
- * !!CAUTION!! strcpy is used here, buffer overflow can happen
  */
-int ReadJsonFile(char *target, const char *path, const char *field) {
+int ReadJsonFile(char *target, const char *path, const char *field, size_t target_size) {
     Serial.printf("Reading field:%s from file: %s\n", field, path);
     File file = SPIFFS.open("/wfcfg.json", "r");
     ArduinoJson::StaticJsonDocument<1024> doc;
@@ -88,7 +87,10 @@ int ReadJsonFile(char *target, const char *path, const char *field) {
     }
     const char *field_value = doc[field];
     Serial.printf("Field value: %s\n", field_value);
-    strcpy(target, field_value); // Consider replace strcpy with snprinf
+    //strcpy(target, field_value); // Consider replace strcpy with snprinf
+    
+    snprintf(target, target_size, "%s", field_value);
+
     Serial.printf("Target value: %s\n", target);
     file.close();
     return 0;
@@ -138,30 +140,30 @@ void setup() {
 
         Serial.println("Reading Config File");
 #if USE_STATIC_MEMORY
-        if (ReadJsonFile(AP_SSID_char, "/wfcfg.json", "AP_SSID")) {
+        if (ReadJsonFile(AP_SSID_char, "/wfcfg.json", "AP_SSID", 64)) {
             lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_AP_SSID);
             delay(1000);
-            strcpy(AP_SSID_char, "WiFi_Config");
+            snprintf(AP_SSID_char, sizeof(AP_SSID_char), "WiFi_Config");
         }
-        if (ReadJsonFile(AP_PASS_char, "/wfcfg.json", "AP_PASS")) {
+        if (ReadJsonFile(AP_PASS_char, "/wfcfg.json", "AP_PASS", 64)) {
             lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_AP_PASS);
             delay(1000);
-            strcpy(AP_PASS_char, "12345678");
+            snprintf(AP_PASS_char, sizeof(AP_PASS_char), "12345678");
         }
-        if (ReadJsonFile(STA_SSID_char, "/wfcfg.json", "STA_SSID")) {
+        if (ReadJsonFile(STA_SSID_char, "/wfcfg.json", "STA_SSID", 64)) {
             lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_SSID);
             delay(1000);
-            strcpy(STA_SSID_char, "hNiP");
+            snprintf(STA_SSID_char, sizeof(STA_SSID_char), "hNiP");
         }
-        if (ReadJsonFile(STA_PASS_char, "/wfcfg.json", "STA_PASS")) {
+        if (ReadJsonFile(STA_PASS_char, "/wfcfg.json", "STA_PASS", 64)) {
             lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_PASS);
             delay(1000);
-            strcpy(STA_PASS_char, "LunarQueen12273");
+            snprintf(STA_PASS_char, sizeof(STA_PASS_char), "LunarQueen12273");
         }
-        if (ReadJsonFile(UUID_char, "/wfcfg.json", "UUID")) {
+        if (ReadJsonFile(UUID_char, "/wfcfg.json", "UUID", 64)) {
             lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_STA_PASS);
             delay(1000);
-            strcpy(UUID_char, "abcdefgh");
+            snprintf(UUID_char, sizeof(UUID_char), "abcdefgh");
         }
 #else
         if (ReadJsonFile(AP_SSID, "/wfcfg.json", "AP_SSID")) {
