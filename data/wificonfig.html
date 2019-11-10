@@ -5,25 +5,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="generic.js" async="async" type="application/javascript"></script>
     <link rel="stylesheet" href="generic.css" type="text/css">
+    <script src="wfcf.js" async="async" type="application/javascript"></script>
 </head>
 
 <body onload="setActiveNavItem();">
     <nav>
         <ul class="nav_bar">
             <li class="nav_bar_li">
-                    <a href="index.html" class="nav_bar_item nav_bar_home">Home</a>
+                <a href="index.html" class="nav_bar_item nav_bar_home">Home</a>
             </li>
             <li class="nav_bar_li">
-                    <a href="monitor.html" class="nav_bar_item nav_bar_monitor">Monitor</a>
+                <a href="monitor.html" class="nav_bar_item nav_bar_monitor">Monitor</a>
             </li>
             <li class="nav_bar_li">
-                    <a href="wificonfig.html" class="nav_bar_item nav_bar_config">WiFi Config</a>
+                <a href="wificonfig.html" class="nav_bar_item nav_bar_config">WiFi Config</a>
             </li>
-            <li class="nav_bar_li">
-                    <a href="about.html" class="nav_bar_item nav_bar_about">About</a>
+            <li class="nav_bar_li nav_bar_float_right">
+                <a href="about.html" class="nav_bar_item nav_bar_about">About</a>
             </li>
         </ul>
     </nav>
+    <div class="title">
+        <h1>
+            WiFi->Config
+        </h1>
+    </div>
+    <div class="body">
+        <div class="body-row">
+            <div class="body-col">
+                <div style="text-align: left;">
+                    <h2>WiFi Configuration</h2>
+                    <div>
+                        <ul class="info_list">
+                            <h3>Current Configuration</h3>
+                            <p>This is the current wifi configuration of the device</p>
+                            <li style="margin-left: 20px;">
+                                <p>SSID: %SSID%</p>
+                            </li>
+                            <li style="margin-left: 20px;">
+                                <p>PASSWORD: %PASS%</p>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="manual">
+                        <ul>
+                            <h3>How to use?</h3>
+                            <p>Input the new SSID and PASSWORD to these field, and press the "Config!" button.</p>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="body-col">
+                <div style="text-align: left;">
+                    <h2>New WiFi Configuration</h2>
+                    <p>Enter new SSID and PASSWORD below</p>
+                    <form>
+                       <fieldset>
+                           <legend>New Configuration</legend>
+                        <h4>SSID</h4>   
+                        <input type="text" id="ssid">
+                        <h4>PASSWORD</h4>
+                        <input type="text" id="pass">
+                       </fieldset>
+                    </form>
+                    <br>
+                    <button onclick="sendConfig()">Config!</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

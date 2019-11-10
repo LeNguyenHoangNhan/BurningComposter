@@ -1,5 +1,5 @@
 {
-    "AP_SSID":"WiFi_Config",
+    "AP_SSID":"WiFi_Config_BC",
     "AP_PASS":"12345678",
     "STA_SSID":"Tomato24",
     "STA_PASS":"TalkischeapShowmethecode",
