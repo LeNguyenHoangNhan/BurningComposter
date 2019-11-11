@@ -74,8 +74,8 @@ int ReadJsonFile(String &target, const char *path, const char *field) {
 /** Implement JSON reader function using stack allocated memory
  *  !!CAUTION!! USE WITH CARE, NOT TESTED MUCH
  */
-template <typename T, size_t size>
-int ReadJsonFile(T (&target)[size], const char *path, const char *field) {
+template <size_t size>
+int ReadJsonFile(char (&target)[size], const char *path, const char *field) {
     Serial.printf("Reading field:%s from file: %s\n", field, path);
     File file = SPIFFS.open("/wfcfg.json", "r");
     ArduinoJson::StaticJsonDocument<1024> doc;
@@ -88,10 +88,7 @@ int ReadJsonFile(T (&target)[size], const char *path, const char *field) {
     }
     const char *field_value = doc[field];
     Serial.printf("Field value: %s\n", field_value);
-    // strcpy(target, field_value); // Consider replace strcpy with snprinf
-
     snprintf(target, size, "%s", field_value);
-
     Serial.printf("Target value: %s\n", target);
     file.close();
     return 0;
