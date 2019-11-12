@@ -11,10 +11,10 @@ extern char *UUID_char;
 #else
 extern String UUID;
 #endif
-HumiditySensor hs(35);
-DallasTemperature ts(&onewire);
+extern HumiditySensor hs;
+extern DallasTemperature ts;
 ArduinoJson::StaticJsonDocument<512> jsonDoc;
-HTTPClient http;
+extern HTTPClient http;
 
 float humd{0.0};
 float temp{0.0};
