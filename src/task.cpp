@@ -1,19 +1,20 @@
 #include "task.hpp"
-#define USE_STATIC_MEMORY true
-
-
-extern LiquidCrystal_I2C lcd;
-extern OneWire onewire;
-
+#include "main.hpp"
+#include "config.hpp"
 
 #if USE_STATIC_MEMORY
 extern char *UUID_char;
 #else
 extern String UUID;
 #endif
-extern HumiditySensor hs;
-extern DallasTemperature ts;
+
+
+
 ArduinoJson::StaticJsonDocument<512> jsonDoc;
+TaskHandle_t RDSSTSK_handler;
+TaskHandle_t DISPLAY_handler;
+TaskHandle_t SENDDATA_hanlder;
+
 extern HTTPClient http;
 
 float humd{0.0};
@@ -24,9 +25,9 @@ int init_task() {
     BaseType_t tsk1_code = xTaskCreatePinnedToCore(
         [](void *pvParameters) {
             for (;;) {
-                ts.requestTemperatures();
-                humd = hs.readSensorPercent();
-                temp = ts.getTempCByIndex(0);
+                ts1.requestTemperatures();
+                humd = hs1.readSensorPercent();
+                temp = ts1.getTempCByIndex(0);
                 Serial.printf("Temp: %.2f, Humd: %.2f\n", temp, humd);
                 vTaskDelay(2000 / portTICK_PERIOD_MS);
             }

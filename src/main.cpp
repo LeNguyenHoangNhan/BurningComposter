@@ -26,7 +26,6 @@
 #include <OneWire.h>
 #include <SPIFFS.h>
 #include <WiFi.h>
-#include <wchar.h>
 
 #include <ArduinoJson.hpp>
 
@@ -34,33 +33,52 @@
 #include "lcd.hpp"
 #include "sensors.hpp"
 #include "task.hpp"
-
-#define TS_PIN (int)15
-#define HS_PIN (int)35
-
-#define USE_STATIC_MEMORY true
+#include "config.hpp"
 
 
-OneWire onewire(TS_PIN);
-HumiditySensor hs(35);
-DallasTemperature ts(&onewire);
-HTTPClient http;
-#if USE_STATIC_MEMORY
-char AP_SSID_char[64], AP_PASS_char[64], STA_SSID_char[64], STA_PASS_char[256],
-    UUID_char[64];
-#else
+#define ts1_PIN (int)15 // temp sensor 1 pin
+#define HS_PIN1 (int)35 // humidity sensor 1 pin
+
+#define ts2_PIN (int)16 // temp sensor 2 pin
+#define HS_PIN2 (int)34 // humidity sensor 2 pin
+
+#define ts3_PIN (int)17 // temp sensor 3 pin
+#define HS_PIN3 (int)33 // humidity sensor 3 pin
+
+OneWire onewire1(ts1_PIN);
+HumiditySensor hs1(HS_PIN1);
+DallasTemperature ts1(&onewire1);
+
+OneWire onewire2(ts2_PIN);
+HumiditySensor hs2(HS_PIN2);
+DallasTemperature ts2(&onewire2);
+
+OneWire onewire3(ts3_PIN);
+HumiditySensor hs3(HS_PIN3);
+DallasTemperature ts3(&onewire3);
+
+
+
+HTTPClient http; // HTTPClient to handle HTTP request (send data back to server)
+
+#if USE_STATIC_MEMORY  // "C" strings instead of normal "String", it use less memory and minimize heap fragmentation?
+char AP_SSID_char[64]; // Buffer for AP_SSID (The SSID of the device own AP)
+char AP_PASS_char[64]; // Buffer for AP_PASS (The password of the device own AP)
+char STA_SSID_char[64]; // Buffer for STA_SSID (The SSID of the WiFi Station the device will try to connect to)
+char STA_PASS_char[256]; // Buffer for STA_PASS (The password of the WiFi Station the device will try to connect to)
+char UUID_char[64]; // Buffer for device's UUID
+#else // Use "String" string as normal
 String AP_SSID, AP_PASS, STA_SSID, STA_PASS, UUID;
 #endif
 
-AsyncWebServer server(80);
-LiquidCrystal_I2C lcd(LCD_ADDR, LCD_ROW, LCD_COL);
+AsyncWebServer server(80); // Create an async web server to handle device's web interface
+LiquidCrystal_I2C lcd(LCD_ADDR, LCD_ROW, LCD_COL); // Create an lcd to display info locally
 
-bool SPIFFS_OK{false};
-bool WiFi_CONNECTED{false};
-bool WiFi_GOTIP{false};
+bool SPIFFS_OK{false}; // Is SPIFFS ok?
+bool WiFi_CONNECTED{false}; // Is WiFi connected?
+bool WiFi_GOTIP{false}; // Does we got IP Address
 
-extern float humd;
-extern float temp;
+
 
 void init_lcd() {
     lcd.init();
@@ -304,8 +322,8 @@ void setup() {
         server.addHandler(wfcfJsonHanler);
         server.begin();
     }
-    ts.begin();
-    Serial.printf("Sensor num: %d\n", ts.getDeviceCount());
+    ts1.begin();
+    Serial.printf("Sensor num: %d\n", ts1.getDeviceCount());
     init_lcd();
     init_task();
 }
