@@ -20,5 +20,7 @@
 #define CONFIG_HPP__
 
 #define USE_STATIC_MEMORY true
-
+#define FIRMWARE_VER "1.1.x"
+#define COMP_TIME __TIME__
+#define COMP_DATE __DATE__
 #endif
