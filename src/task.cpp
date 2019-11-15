@@ -20,7 +20,7 @@
 #include "config.hpp"
 
 #if USE_STATIC_MEMORY
-extern char *UUID_char;
+extern char UUID_char[64];
 #else
 extern String UUID;
 #endif
@@ -62,6 +62,7 @@ int init_task() {
                 vTaskDelay(60000);
                 if (WiFi.isConnected() == true && WiFi.status() == WL_CONNECTED) {
                     Serial.println("Start send data to server");
+                    Serial.printf("UUID: %s\n", UUID_char);
                     jsonDoc["uuid"] = UUID_char;
                     jsonDoc["temp"] = temp;
                     jsonDoc["humidity"] = humd;
