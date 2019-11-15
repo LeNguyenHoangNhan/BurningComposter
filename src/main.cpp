@@ -29,21 +29,20 @@
 
 #include <ArduinoJson.hpp>
 
+#include "config.hpp"
 #include "error_lcd.hpp"
 #include "lcd.hpp"
 #include "sensors.hpp"
 #include "task.hpp"
-#include "config.hpp"
 
+#define ts1_PIN (int)15  // temp sensor 1 pin
+#define HS_PIN1 (int)35  // humidity sensor 1 pin
 
-#define ts1_PIN (int)15 // temp sensor 1 pin
-#define HS_PIN1 (int)35 // humidity sensor 1 pin
+#define ts2_PIN (int)16  // temp sensor 2 pin
+#define HS_PIN2 (int)34  // humidity sensor 2 pin
 
-#define ts2_PIN (int)16 // temp sensor 2 pin
-#define HS_PIN2 (int)34 // humidity sensor 2 pin
-
-#define ts3_PIN (int)17 // temp sensor 3 pin
-#define HS_PIN3 (int)33 // humidity sensor 3 pin
+#define ts3_PIN (int)17  // temp sensor 3 pin
+#define HS_PIN3 (int)33  // humidity sensor 3 pin
 
 OneWire onewire1(ts1_PIN);
 HumiditySensor hs1(HS_PIN1);
@@ -57,28 +56,31 @@ OneWire onewire3(ts3_PIN);
 HumiditySensor hs3(HS_PIN3);
 DallasTemperature ts3(&onewire3);
 
+HTTPClient
+    http;  // HTTPClient to handle HTTP request (send data back to server)
 
-
-HTTPClient http; // HTTPClient to handle HTTP request (send data back to server)
-
-#if USE_STATIC_MEMORY  // "C" strings instead of normal "String", it use less memory and minimize heap fragmentation?
-char AP_SSID_char[64]; // Buffer for AP_SSID (The SSID of the device own AP)
-char AP_PASS_char[64]; // Buffer for AP_PASS (The password of the device own AP)
-char STA_SSID_char[64]; // Buffer for STA_SSID (The SSID of the WiFi Station the device will try to connect to)
-char STA_PASS_char[256]; // Buffer for STA_PASS (The password of the WiFi Station the device will try to connect to)
-char UUID_char[64]; // Buffer for device's UUID
-#else // Use "String" string as normal
+#if USE_STATIC_MEMORY   // "C" strings instead of normal "String", it use less
+                        // memory and minimize heap fragmentation?
+char AP_SSID_char[64];  // Buffer for AP_SSID (The SSID of the device own AP)
+char
+    AP_PASS_char[64];  // Buffer for AP_PASS (The password of the device own AP)
+char STA_SSID_char[64];   // Buffer for STA_SSID (The SSID of the WiFi Station
+                          // the device will try to connect to)
+char STA_PASS_char[256];  // Buffer for STA_PASS (The password of the WiFi
+                          // Station the device will try to connect to)
+char UUID_char[64];       // Buffer for device's UUID
+#else                     // Use "String" string as normal
 String AP_SSID, AP_PASS, STA_SSID, STA_PASS, UUID;
 #endif
 
-AsyncWebServer server(80); // Create an async web server to handle device's web interface
-LiquidCrystal_I2C lcd(LCD_ADDR, LCD_ROW, LCD_COL); // Create an lcd to display info locally
+AsyncWebServer server(
+    80);  // Create an async web server to handle device's web interface
+LiquidCrystal_I2C lcd(LCD_ADDR, LCD_ROW,
+                      LCD_COL);  // Create an lcd to display info locally
 
-bool SPIFFS_OK{false}; // Is SPIFFS ok?
-bool WiFi_CONNECTED{false}; // Is WiFi connected?
-bool WiFi_GOTIP{false}; // Does we got IP Address
-
-
+bool SPIFFS_OK{false};       // Is SPIFFS ok?
+bool WiFi_CONNECTED{false};  // Is WiFi connected?
+bool WiFi_GOTIP{false};      // Does we got IP Address
 
 void init_lcd() {
     lcd.init();
@@ -236,7 +238,7 @@ void setup() {
     Serial.printf("STA_PASS: %s\n", STA_PASS_char);
     WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_MODE_APSTA);
-    WiFi.begin(STA_PASS_char, STA_PASS_char);
+    WiFi.begin(STA_SSID_char, STA_PASS_char);
     WiFi.softAP(AP_SSID_char, AP_PASS_char);
     WiFi.softAPConfig(IPAddress(172, 16, 0, 1), IPAddress(172, 16, 0, 1),
                       IPAddress(255, 255, 255, 0));
@@ -269,19 +271,47 @@ void setup() {
             request->send(SPIFFS, "/generic.js", "application/javascript",
                           false, nullptr);
         });
-        server.on("/monitor", HTTP_GET, [](AsyncWebServerRequest *request) {
-            request->send(SPIFFS, "/monitor.html", "text/html", false, nullptr);
-        });
+        // server.on("/monitor", HTTP_GET, [](AsyncWebServerRequest *request) {
+        //     request->send(SPIFFS, "/monitor.html", "text/html", false, nullptr);
+        // });
         server.on("/monitor.html", HTTP_GET,
                   [](AsyncWebServerRequest *request) {
                       request->send(SPIFFS, "/monitor.html", "text/html", false,
                                     nullptr);
                   });
-        server.on("/about", HTTP_GET, [](AsyncWebServerRequest *request) {
-            request->send(SPIFFS, "/about.html", "text/html", false, nullptr);
-        });
+        // server.on("/about", HTTP_GET, [](AsyncWebServerRequest *request) {
+        //     request->send(SPIFFS, "/about.html", "text/html", false,
+        //                   [](const String &pp_templ) -> String {
+        //                       Serial.printf("About page preprocessor: %s\n",
+        //                                     pp_templ.c_str());
+        //                       if (pp_templ == "FWVS") {
+        //                           return String(FIRMWARE_VER);
+        //                       } else if (pp_templ == "WFCD") {
+        //                           return String(COMP_DATE);
+        //                       } else if (pp_templ == "WMC") {
+        //                           return WiFi.macAddress();
+        //                       } else if (pp_templ == "FHP") {
+        //                           return String(ESP.getFreeHeap());
+        //                       }
+        //                       return String();
+        //                   });
+        // });
         server.on("/about.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-            request->send(SPIFFS, "/about.html", "text/html", false, nullptr);
+            request->send(SPIFFS, "/about.html", "text/html", false,
+                          [](const String &pp_templ) -> String {
+                              Serial.printf("About page preprocessor: %s\n",
+                                            pp_templ.c_str());
+                              if (pp_templ == "FWVS") {
+                                  return String(FIRMWARE_VER);
+                              } else if (pp_templ == "WFCD") {
+                                  return String(COMP_DATE);
+                              } else if (pp_templ == "WMC") {
+                                  return WiFi.macAddress();
+                              } else if (pp_templ == "FHP") {
+                                  return String(ESP.getFreeHeap());
+                              }
+                              return String();
+                          });
         });
         server.on("/wfcf.js", HTTP_GET, [](AsyncWebServerRequest *request) {
             request->send(SPIFFS, "/wfcf.js", "application/javascript", false,
@@ -301,11 +331,36 @@ void setup() {
                                         }
                                     });
                   });
+#elif
+        server.on("/wificonfig.html", HTTP_GET,
+                  [](AsyncWebServerRequest *request) {
+                      request->send(SPIFFS, "/wificonfig.html", "text/html",
+                                    false, [](const String &pp_temp) -> String {
+                                        if (pp_temp == "SSID") {
+                                            return STA_SSID;
+                                        } else if (pp_temp == "PASS") {
+                                            return STA_PASS;
+                                        } else {
+                                            return String();
+                                        }
+                                    });
+                  });
 #endif
-        server.on("/wificonfig", HTTP_GET, [](AsyncWebServerRequest *request) {
-            request->send(SPIFFS, "/wificonfig.html", "text/html", false,
-                          nullptr);
-        });
+#if USE_STATIC_MEMORY
+        AsyncCallbackJsonWebHandler *wfcfJsonHanler =
+            new AsyncCallbackJsonWebHandler(
+                "/wificonfig", [](AsyncWebServerRequest *request,
+                                  ArduinoJson::JsonVariant &jsonVar) {
+                    ArduinoJson::JsonObject jsonObj =
+                        jsonVar.as<ArduinoJson::JsonObject>();
+                    const char *ssid = jsonObj["ssid"];
+                    const char *pass = jsonObj["pass"];
+                    Serial.printf("Recieved SSID: %s\n", ssid);
+                    Serial.printf("Recieved PASS: %s\n", pass);
+                    WriteJsonFile("STA_SSID", ssid, "/wfcfg.json");
+                    WriteJsonFile("STA_PASS", pass, "/wfcfg.json");
+                });
+#elif
         AsyncCallbackJsonWebHandler *wfcfJsonHanler =
             new AsyncCallbackJsonWebHandler(
                 "/wificonfig", [](AsyncWebServerRequest *request,
@@ -319,6 +374,7 @@ void setup() {
                     WriteJsonFile("STA_SSID", ssid.c_str(), "/wfcfg.json");
                     WriteJsonFile("STA_PASS", pass.c_str(), "/wfcfg.json");
                 });
+#endif
         server.addHandler(wfcfJsonHanler);
         server.begin();
     }
