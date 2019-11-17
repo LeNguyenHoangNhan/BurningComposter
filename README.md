@@ -7,4 +7,4 @@
 
 ### V1.1.x
 Copyright (c) 2019-2019 Le Nguyen Hoang Nhan (public.hoangnhanlenguyen at gmail.com)
-For legal stuff, see [LICENSE](https://github.com/LeNguyenHoangNhan/BurningComposter/blob/master/LICENSE), basically, you can run it, modify it, print it out, smoke it,  as long as I won't be held responsible.
+For legal stuff, see [LICENSE](https://github.com/LeNguyenHoangNhan/BurningComposter/blob/master/LICENSE), basically, you can run it, modify it, print it out, roll it and smoke it,  as long as I won't be held responsible.
