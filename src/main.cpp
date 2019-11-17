@@ -20,6 +20,7 @@
 #include <AsyncJson.h>
 #include <DallasTemperature.h>
 #include <ESPAsyncWebServer.h>
+#include <ESPmDNS.h>
 #include <FS.h>
 #include <HTTPClient.h>
 #include <LiquidCrystal_I2C.h>
@@ -27,6 +28,7 @@
 #include <SPIFFS.h>
 #include <StreamUtils.h>
 #include <WiFi.h>
+#include <mdns.h>
 
 #include <ArduinoJson.hpp>
 
@@ -306,7 +308,11 @@ void setup() {
     WiFi.softAPConfig(IPAddress(172, 16, 0, 1), IPAddress(172, 16, 0, 1),
                       IPAddress(255, 255, 255, 0));
     WiFi.softAP(AP_SSID_char, AP_PASS_char);
-
+    if (!MDNS.begin("esp32")) {
+        Serial.println("Error setting up MDNS responder!");
+    } else {
+        Serial.println("mDNS responder started");
+    }
 #else
     Serial.println("AP_SSID: " + AP_SSID);
     Serial.println("AP_PASS: " + AP_PASS);
@@ -439,6 +445,7 @@ void setup() {
 #endif
         server.addHandler(wfcfJsonHanler);
         server.begin();
+        MDNS.addService("http", "tcp", 80);
     }
     ts1.begin();
     Serial.printf("Sensor num: %d\n", ts1.getDeviceCount());
