@@ -57,8 +57,7 @@ OneWire onewire3(ts3_PIN);
 HumiditySensor hs3(HS_PIN3);
 DallasTemperature ts3(&onewire3);
 
-HTTPClient
-    http;  // HTTPClient to handle HTTP request (send data back to server)
+HTTPClient http;  // HTTPClient to handle HTTP request (send data back to server)
 
 #if USE_STATIC_MEMORY     // "C" strings instead of normal "String", it use less memory and minimize heap fragmentation?
 char AP_SSID_char[64];    // Buffer for AP_SSID (The SSID of the device own AP)
@@ -93,24 +92,28 @@ void init_lcd() {
  */
 template <size_t size>
 int ReadJsonFile(char (&target)[size], const char *path, const char *field) {
-    Serial.printf("Reading field:%s from file: %s\n", field, path);
-    File file = SPIFFS.open("/wfcfg.json", "r");
+    Serial.printf("Reading field:%s from file: %s\n", field, path);  // Debug purpose
+    File file = SPIFFS.open(path, "r");
+    ReadBufferingStream bufferedFile_r{file, 64};  // Use buffered File
+    // 1024 Bytes Json doc
     ArduinoJson::StaticJsonDocument<1024> doc;
-    ArduinoJson::DeserializationError err =
-        ArduinoJson::deserializeJson(doc, file);
+    ArduinoJson::DeserializationError err = ArduinoJson::deserializeJson(doc, bufferedFile_r);
     if (err) {
         Serial.println("Error parsing JSON");
         file.close();
-        return -127;
+        return -127;  // No point of continuing
     }
     const char *field_value = doc[field];
-    Serial.printf("Field value: %s\n", field_value);
-    snprintf(target, size, "%s", field_value);
-    Serial.printf("Target value: %s\n", target);
+    Serial.printf("Field value: %s\n", field_value);  // Debug purpose
+    snprintf(target, size, "%s", field_value);        // Copy field's value to target buffer, up to target 'size' bytes, null terminated the target
+    Serial.printf("Target value: %s\n", target);      // Debug purpose
+    bufferedFile_r.flush();
     file.close();
     return 0;
 }
+
 #else
+
 int ReadJsonFile(String &target, const char *path, const char *field) {
     File file = SPIFFS.open(path, "r");
     if (!file) {
@@ -132,13 +135,14 @@ int ReadJsonFile(String &target, const char *path, const char *field) {
     target = doc[field].as<String>();
     return 0;
 }
+
 #endif
 
 #if USE_STATIC_MEMORY  // "C" strings instead of normal "String", it use less memory and minimize heap fragmentation?
 
 // Big FUNC here!!
 int WriteJsonFile(const char *target_field, const char *target_value, const char *file_path) {
-    Serial.printf("Change field %s of file %s to %s\n", target_field, file_path, target_value);
+    Serial.printf("Change field %s of file %s to %s\n", target_field, file_path, target_value);  // Debug purpose
 
     File file_r = SPIFFS.open(file_path, "r");
     if (!file_r) {
@@ -146,9 +150,10 @@ int WriteJsonFile(const char *target_field, const char *target_value, const char
         file_r.close();
         return -127;
     }
-    ReadBufferingStream bufferedFile_r{file_r, 64};  // Use buffered
+    ReadBufferingStream bufferedFile_r{file_r, 64};  // Use buffered file
     ArduinoJson::StaticJsonDocument<1024> doc;
     ArduinoJson::DeserializationError deserial_err = ArduinoJson::deserializeJson(doc, bufferedFile_r);
+    bufferedFile_r.flush();
     file_r.close();
 
     if (deserial_err) {
@@ -156,24 +161,28 @@ int WriteJsonFile(const char *target_field, const char *target_value, const char
         return (-1);
     }
     doc[target_field] = target_value;
-    SPIFFS.remove(file_path);
 
-    File file_w = SPIFFS.open(file_path, "w");
-    ReadBufferingStream bufferedFile_w{file_w, 64};
+    SPIFFS.remove(file_path);  // Delete file to write new file
+
+    File file_w = SPIFFS.open(file_path, "w");  // Open file in 'write' mode for writing
+
     if (!file_w) {
         Serial.println("Error open file");
         file_r.close();
         return -127;
     }
+    WriteBufferingStream bufferedFile_w{file_w, 64};  // Use buffered file
     Serial.println("Write content:");
     ArduinoJson::serializeJsonPretty(doc, Serial);
     ArduinoJson::serializeJson(doc, bufferedFile_w);
+    bufferedFile_w.flush();
     file_w.close();
 
     File file_rb = SPIFFS.open(file_path, "r");
     ReadBufferingStream bufferedFile_rb{file_rb, 64};
     ArduinoJson::StaticJsonDocument<1024> doc_rb;
     deserial_err = ArduinoJson::deserializeJson(doc_rb, bufferedFile_rb);
+    bufferedFile_rb.flush();
     file_rb.close();
     if (doc_rb == doc) {
         Serial.println("Read back OK");
@@ -294,21 +303,19 @@ void setup() {
     WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_MODE_APSTA);
     WiFi.begin(STA_SSID_char, STA_PASS_char);
-    WiFi.softAP(AP_SSID_char, AP_PASS_char);
     WiFi.softAPConfig(IPAddress(172, 16, 0, 1), IPAddress(172, 16, 0, 1),
                       IPAddress(255, 255, 255, 0));
+    WiFi.softAP(AP_SSID_char, AP_PASS_char);
+
 #else
-    Serial.println("AP_SSID: " + (USE_STATIC_MEMORY ? AP_SSID_char : AP_SSID));
-    Serial.println("AP_PASS: " + (USE_STATIC_MEMORY ? AP_PASS_char : AP_PASS));
-    Serial.println("STA_SSID: " +
-                   (USE_STATIC_MEMORY ? STA_SSID_char : STA_SSID));
-    Serial.println("STA_PASS: " +
-                   (USE_STATIC_MEMORY ? STA_PASS_char : STA_PASS));
+    Serial.println("AP_SSID: " + AP_SSID);
+    Serial.println("AP_PASS: " + AP_PASS);
+    Serial.println("STA_SSID: " + STA_SSID);
+    Serial.println("STA_PASS: " + STA_PASS);
     WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_MODE_APSTA);
-    WiFi.begin(USE_STATIC_MEMORY ? STA_PASS_char : STA_SSID.c_str(),
-               USE_STATIC_MEMORY ? STA_PASS_char : STA_PASS.c_str());
-    WiFi.softAP(USE_STATIC_MEMORY? AP_SSID_char : AP_SSID.c_str(), USE_STATIC_MEMORY? AP_PASS_char, AP_PASS.c_str());
+    WiFi.begin(STA_SSID.c_str(), STA_PASS.c_str());
+    WiFi.softAP(AP_SSID.c_str(), AP_PASS.c_str());
     WiFi.softAPConfig(IPAddress(172, 16, 0, 1), IPAddress(172, 16, 0, 1),
                       IPAddress(255, 255, 255, 0));
 #endif
@@ -365,6 +372,8 @@ void setup() {
                                   return WiFi.macAddress();
                               } else if (pp_templ == "FHP") {
                                   return String(ESP.getFreeHeap());
+                              } else if (pp_templ == "UUID") {
+                                  return String(UUID_char);
                               }
                               return String();
                           });
@@ -387,7 +396,7 @@ void setup() {
                                         }
                                     });
                   });
-#elif
+#else
         server.on("/wificonfig.html", HTTP_GET,
                   [](AsyncWebServerRequest *request) {
                       request->send(SPIFFS, "/wificonfig.html", "text/html",
@@ -403,20 +412,17 @@ void setup() {
                   });
 #endif
 #if USE_STATIC_MEMORY
-        AsyncCallbackJsonWebHandler *wfcfJsonHanler =
-            new AsyncCallbackJsonWebHandler(
-                "/wificonfig", [](AsyncWebServerRequest *request,
-                                  ArduinoJson::JsonVariant &jsonVar) {
-                    ArduinoJson::JsonObject jsonObj =
-                        jsonVar.as<ArduinoJson::JsonObject>();
-                    const char *ssid = jsonObj["ssid"];
-                    const char *pass = jsonObj["pass"];
-                    Serial.printf("Recieved SSID: %s\n", ssid);
-                    Serial.printf("Recieved PASS: %s\n", pass);
-                    WriteJsonFile("STA_SSID", ssid, "/wfcfg.json");
-                    WriteJsonFile("STA_PASS", pass, "/wfcfg.json");
-                });
-#elif
+        AsyncCallbackJsonWebHandler *wfcfJsonHanler = new AsyncCallbackJsonWebHandler("/wificonfig", [](AsyncWebServerRequest *request, ArduinoJson::JsonVariant &jsonVar) {
+            ArduinoJson::JsonObject jsonObj =
+                jsonVar.as<ArduinoJson::JsonObject>();
+            const char *ssid = jsonObj["ssid"];
+            const char *pass = jsonObj["pass"];
+            Serial.printf("Recieved SSID: %s\n", ssid);
+            Serial.printf("Recieved PASS: %s\n", pass);
+            WriteJsonFile("STA_SSID", ssid, "/wfcfg.json");
+            WriteJsonFile("STA_PASS", pass, "/wfcfg.json");
+        });
+#else
         AsyncCallbackJsonWebHandler *wfcfJsonHanler =
             new AsyncCallbackJsonWebHandler(
                 "/wificonfig", [](AsyncWebServerRequest *request,
@@ -440,8 +446,7 @@ void setup() {
     init_task();
 }
 void loop() {
-#define USE_LOOP
-#ifdef USE_LOOP
+#if USE_LOOP
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.printf("Humd: %.2f", humd);
