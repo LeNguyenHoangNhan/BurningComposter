@@ -23,4 +23,5 @@
 #define FIRMWARE_VER "1.1.x"
 #define COMP_TIME __TIME__
 #define COMP_DATE __DATE__
+#define USE_LOOP true
 #endif
