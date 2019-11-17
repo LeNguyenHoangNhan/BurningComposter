@@ -25,6 +25,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <OneWire.h>
 #include <SPIFFS.h>
+#include <StreamUtils.h>
 #include <WiFi.h>
 
 #include <ArduinoJson.hpp>
@@ -59,17 +60,15 @@ DallasTemperature ts3(&onewire3);
 HTTPClient
     http;  // HTTPClient to handle HTTP request (send data back to server)
 
-#if USE_STATIC_MEMORY   // "C" strings instead of normal "String", it use less
-                        // memory and minimize heap fragmentation?
-char AP_SSID_char[64];  // Buffer for AP_SSID (The SSID of the device own AP)
-char
-    AP_PASS_char[64];  // Buffer for AP_PASS (The password of the device own AP)
-char STA_SSID_char[64];   // Buffer for STA_SSID (The SSID of the WiFi Station
-                          // the device will try to connect to)
-char STA_PASS_char[256];  // Buffer for STA_PASS (The password of the WiFi
-                          // Station the device will try to connect to)
+#if USE_STATIC_MEMORY     // "C" strings instead of normal "String", it use less memory and minimize heap fragmentation?
+char AP_SSID_char[64];    // Buffer for AP_SSID (The SSID of the device own AP)
+char AP_PASS_char[64];    // Buffer for AP_PASS (The password of the device own AP)
+char STA_SSID_char[64];   // Buffer for STA_SSID (The SSID of the WiFi Station the device will try to connect to)
+char STA_PASS_char[256];  // Buffer for STA_PASS (The password of the WiFi Station the device will try to connect to)
 char UUID_char[64];       // Buffer for device's UUID
-#else                     // Use "String" string as normal
+
+#else  // Use "String" string as normal
+
 String AP_SSID, AP_PASS, STA_SSID, STA_PASS, UUID;
 #endif
 
@@ -80,7 +79,7 @@ LiquidCrystal_I2C lcd(LCD_ADDR, LCD_ROW,
 
 bool SPIFFS_OK{false};       // Is SPIFFS ok?
 bool WiFi_CONNECTED{false};  // Is WiFi connected?
-bool WiFi_GOTIP{false};      // Does we got IP Address
+bool WiFi_GOTIP{false};      // Does we got IP Address?
 
 void init_lcd() {
     lcd.init();
@@ -88,28 +87,7 @@ void init_lcd() {
     lcd.backlight();
     lcd.setCursor(0, 0);
 }
-
-int ReadJsonFile(String &target, const char *path, const char *field) {
-    File file = SPIFFS.open(path, "r");
-    if (!file) {
-        Serial.println("Error open file");
-        file.close();
-        target = String();
-        return -127;
-    }
-    String file_content = file.readString();
-    file.close();
-    ArduinoJson::DynamicJsonDocument doc(1024);
-    ArduinoJson::DeserializationError err =
-        ArduinoJson::deserializeJson(doc, file_content);
-    if (err) {
-        Serial.println("Error parsing JSON file");
-        target = String();
-        return -1;
-    }
-    target = doc[field].as<String>();
-    return 0;
-}
+#if USE_STATIC_MEMORY  // "C" strings instead of normal "String", it use less memory and minimize heap fragmentation?
 /** Implement JSON reader function using stack allocated memory
  *  !!CAUTION!! USE WITH CARE, NOT TESTED MUCH
  */
@@ -132,6 +110,82 @@ int ReadJsonFile(char (&target)[size], const char *path, const char *field) {
     file.close();
     return 0;
 }
+#else
+int ReadJsonFile(String &target, const char *path, const char *field) {
+    File file = SPIFFS.open(path, "r");
+    if (!file) {
+        Serial.println("Error open file");
+        file.close();
+        target = String();
+        return -127;
+    }
+    String file_content = file.readString();
+    file.close();
+    ArduinoJson::DynamicJsonDocument doc(1024);
+    ArduinoJson::DeserializationError err =
+        ArduinoJson::deserializeJson(doc, file_content);
+    if (err) {
+        Serial.println("Error parsing JSON file");
+        target = String();
+        return -1;
+    }
+    target = doc[field].as<String>();
+    return 0;
+}
+#endif
+
+#if USE_STATIC_MEMORY  // "C" strings instead of normal "String", it use less memory and minimize heap fragmentation?
+
+// Big FUNC here!!
+int WriteJsonFile(const char *target_field, const char *target_value, const char *file_path) {
+    Serial.printf("Change field %s of file %s to %s\n", target_field, file_path, target_value);
+
+    File file_r = SPIFFS.open(file_path, "r");
+    if (!file_r) {
+        Serial.println("Error open file");
+        file_r.close();
+        return -127;
+    }
+    ReadBufferingStream bufferedFile_r{file_r, 64};  // Use buffered
+    ArduinoJson::StaticJsonDocument<1024> doc;
+    ArduinoJson::DeserializationError deserial_err = ArduinoJson::deserializeJson(doc, bufferedFile_r);
+    file_r.close();
+
+    if (deserial_err) {
+        Serial.println("Error parsing JSON file");
+        return (-1);
+    }
+    doc[target_field] = target_value;
+    SPIFFS.remove(file_path);
+
+    File file_w = SPIFFS.open(file_path, "w");
+    ReadBufferingStream bufferedFile_w{file_w, 64};
+    if (!file_w) {
+        Serial.println("Error open file");
+        file_r.close();
+        return -127;
+    }
+    Serial.println("Write content:");
+    ArduinoJson::serializeJsonPretty(doc, Serial);
+    ArduinoJson::serializeJson(doc, bufferedFile_w);
+    file_w.close();
+
+    File file_rb = SPIFFS.open(file_path, "r");
+    ReadBufferingStream bufferedFile_rb{file_rb, 64};
+    ArduinoJson::StaticJsonDocument<1024> doc_rb;
+    deserial_err = ArduinoJson::deserializeJson(doc_rb, bufferedFile_rb);
+    file_rb.close();
+    if (doc_rb == doc) {
+        Serial.println("Read back OK");
+        return 0;
+    } else {
+        Serial.println("Read back not match");
+        return (-256);
+    }
+    return 0;
+}
+
+#else
 int WriteJsonFile(const char *target_field, const char *target_value,
                   const char *file_path) {
     File file_r = SPIFFS.open(file_path, "r");
@@ -169,6 +223,7 @@ int WriteJsonFile(const char *target_field, const char *target_value,
         return (-256);
     }
 }
+#endif
 
 void setup() {
     Serial.begin(9600);
@@ -272,7 +327,8 @@ void setup() {
                           false, nullptr);
         });
         // server.on("/monitor", HTTP_GET, [](AsyncWebServerRequest *request) {
-        //     request->send(SPIFFS, "/monitor.html", "text/html", false, nullptr);
+        //     request->send(SPIFFS, "/monitor.html", "text/html", false,
+        //     nullptr);
         // });
         server.on("/monitor.html", HTTP_GET,
                   [](AsyncWebServerRequest *request) {
