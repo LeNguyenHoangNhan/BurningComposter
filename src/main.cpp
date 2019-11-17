@@ -67,16 +67,14 @@ char AP_PASS_char[64];    // Buffer for AP_PASS (The password of the device own 
 char STA_SSID_char[64];   // Buffer for STA_SSID (The SSID of the WiFi Station the device will try to connect to)
 char STA_PASS_char[256];  // Buffer for STA_PASS (The password of the WiFi Station the device will try to connect to)
 char UUID_char[64];       // Buffer for device's UUID
-
+char mDNS_char[64];
 #else  // Use "String" string as normal
 
 String AP_SSID, AP_PASS, STA_SSID, STA_PASS, UUID;
 #endif
 
-AsyncWebServer server(
-    80);  // Create an async web server to handle device's web interface
-LiquidCrystal_I2C lcd(LCD_ADDR, LCD_ROW,
-                      LCD_COL);  // Create an lcd to display info locally
+AsyncWebServer server(80);                          // Create an async web server to handle device's web interface
+LiquidCrystal_I2C lcd(LCD_ADDR, LCD_ROW, LCD_COL);  // Create an lcd to display info locally
 
 bool SPIFFS_OK{false};       // Is SPIFFS ok?
 bool WiFi_CONNECTED{false};  // Is WiFi connected?
@@ -268,6 +266,11 @@ void setup() {
             delay(1000);
             snprintf(UUID_char, sizeof(UUID_char), "abcdefgh");
         }
+        if (ReadJsonFile(mDNS_char, "/wfcfg.json", "MDNS")) {
+            lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_MDNS);
+            delay(1000);
+            snprintf(mDNS_char, sizeof(mDNS_char), "esp32");
+        }
 #else
         if (ReadJsonFile(AP_SSID, "/wfcfg.json", "AP_SSID")) {
             lcd_err_clr_pr(lcd, LCD_ERR_FAILED_READ_CONFIG_AP_SSID);
@@ -308,7 +311,7 @@ void setup() {
     WiFi.softAPConfig(IPAddress(172, 16, 0, 1), IPAddress(172, 16, 0, 1),
                       IPAddress(255, 255, 255, 0));
     WiFi.softAP(AP_SSID_char, AP_PASS_char);
-    if (!MDNS.begin("esp32")) {
+    if (!MDNS.begin(mDNS_char)) {
         Serial.println("Error setting up MDNS responder!");
     } else {
         Serial.println("mDNS responder started");
