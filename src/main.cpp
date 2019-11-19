@@ -139,7 +139,6 @@ int ReadJsonFile(String &target, const char *path, const char *field) {
 #endif
 
 #if USE_STATIC_MEMORY  // "C" strings instead of normal "String", it use less memory and minimize heap fragmentation?
-
 // Big FUNC here!!
 int WriteJsonFile(const char *target_field, const char *target_value, const char *file_path) {
     Serial.printf("Change field %s of file %s to %s\n", target_field, file_path, target_value);  // Debug purpose
@@ -193,7 +192,8 @@ int WriteJsonFile(const char *target_field, const char *target_value, const char
     }
     return 0;
 }
-
+int WriteJsonFile(const char *first_target_field, const char *first_target_value, const char *second_target_field, const char *second_target_value, const char *file_path) {
+}
 #else
 int WriteJsonFile(const char *target_field, const char *target_value,
                   const char *file_path) {
@@ -351,28 +351,10 @@ void setup() {
                       request->send(SPIFFS, "/monitor.html", "text/html", false,
                                     nullptr);
                   });
-        // server.on("/about", HTTP_GET, [](AsyncWebServerRequest *request) {
-        //     request->send(SPIFFS, "/about.html", "text/html", false,
-        //                   [](const String &pp_templ) -> String {
-        //                       Serial.printf("About page preprocessor: %s\n",
-        //                                     pp_templ.c_str());
-        //                       if (pp_templ == "FWVS") {
-        //                           return String(FIRMWARE_VER);
-        //                       } else if (pp_templ == "WFCD") {
-        //                           return String(COMP_DATE);
-        //                       } else if (pp_templ == "WMC") {
-        //                           return WiFi.macAddress();
-        //                       } else if (pp_templ == "FHP") {
-        //                           return String(ESP.getFreeHeap());
-        //                       }
-        //                       return String();
-        //                   });
-        // });
         server.on("/about.html", HTTP_GET, [](AsyncWebServerRequest *request) {
             request->send(SPIFFS, "/about.html", "text/html", false,
                           [](const String &pp_templ) -> String {
-                              Serial.printf("About page preprocessor: %s\n",
-                                            pp_templ.c_str());
+                              Serial.printf("About page preprocessor: %s\n", pp_templ.c_str());
                               if (pp_templ == "FWVS") {
                                   return String(FIRMWARE_VER);
                               } else if (pp_templ == "WFCD") {
@@ -422,8 +404,7 @@ void setup() {
 #endif
 #if USE_STATIC_MEMORY
         AsyncCallbackJsonWebHandler *wfcfJsonHanler = new AsyncCallbackJsonWebHandler("/wificonfig", [](AsyncWebServerRequest *request, ArduinoJson::JsonVariant &jsonVar) {
-            ArduinoJson::JsonObject jsonObj =
-                jsonVar.as<ArduinoJson::JsonObject>();
+            ArduinoJson::JsonObject jsonObj = jsonVar.as<ArduinoJson::JsonObject>();
             const char *ssid = jsonObj["ssid"];
             const char *pass = jsonObj["pass"];
             Serial.printf("Recieved SSID: %s\n", ssid);
