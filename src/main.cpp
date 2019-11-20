@@ -29,7 +29,6 @@
 #include <StreamUtils.h>
 #include <WiFi.h>
 #include <mdns.h>
-
 #include <ArduinoJson.hpp>
 
 #include "config.hpp"
