@@ -16,8 +16,9 @@
     along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "task.hpp"
-#include "main.hpp"
+
 #include "config.hpp"
+#include "main.hpp"
 
 #if USE_STATIC_MEMORY
 extern char UUID_char[64];
@@ -25,11 +26,8 @@ extern char UUID_char[64];
 extern String UUID;
 #endif
 
-
-
 ArduinoJson::StaticJsonDocument<512> jsonDoc;
 TaskHandle_t RDSSTSK_handler;
-TaskHandle_t DISPLAY_handler;
 TaskHandle_t SENDDATA_hanlder;
 
 extern HTTPClient http;
@@ -55,12 +53,13 @@ int init_task() {
         return -1;
     }
 
-    #if USE_STATIC_MEMORY
+#if USE_STATIC_MEMORY
     BaseType_t tsk2_code = xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
                 vTaskDelay(60000);
-                if (WiFi.isConnected() == true && WiFi.status() == WL_CONNECTED) {
+                if (WiFi.isConnected() == true &&
+                    WiFi.status() == WL_CONNECTED) {
                     Serial.println("Start send data to server");
                     Serial.printf("UUID: %s\n", UUID_char);
                     jsonDoc["uuid"] = UUID_char;
@@ -79,18 +78,19 @@ int init_task() {
             }
             vTaskDelete(NULL);
         },
-        "SNDDTTSK", 4096, nullptr, 20, &DISPLAY_handler);
+        "SNDDTTSK", 4096, nullptr, 20, &SENDDATA_hanlder);
     if (tsk2_code != pdPASS) {
         return -2;
     }
-    #else
-        BaseType_t tsk2_code = xTaskCreate(
+#else
+    BaseType_t tsk2_code = xTaskCreate(
         [](void *pvParameters) {
             for (;;) {
                 vTaskDelay(60000);
-                if (WiFi.isConnected() == true && WiFi.status() == WL_CONNECTED) {
+                if (WiFi.isConnected() == true &&
+                    WiFi.status() == WL_CONNECTED) {
                     Serial.println("Start send data to server");
-                    jsonDoc["uuid"] =UUID;
+                    jsonDoc["uuid"] = UUID;
                     jsonDoc["temp"] = temp;
                     jsonDoc["humidity"] = humd;
                     http.begin("nqdbeta.tk", 80, "/giatricambien");
@@ -110,7 +110,7 @@ int init_task() {
     if (tsk2_code != pdPASS) {
         return -2;
     }
-    #endif
+#endif
 
     return 0;
 }
