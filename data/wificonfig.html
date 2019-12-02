@@ -12,33 +12,33 @@
     <nav>
         <ul class="nav_bar">
             <li class="nav_bar_li">
-                <a href="index.html" class="nav_bar_item nav_bar_home">Home</a>
+                <a href="index.html" class="nav_bar_item nav_bar_home">Trang chủ</a>
             </li>
             <li class="nav_bar_li">
-                <a href="monitor.html" class="nav_bar_item nav_bar_monitor">Monitor</a>
+                <a href="monitor.html" class="nav_bar_item nav_bar_monitor">Theo dõi</a>
             </li>
             <li class="nav_bar_li">
-                <a href="wificonfig.html" class="nav_bar_item nav_bar_config">WiFi Config</a>
+                <a href="wificonfig.html" class="nav_bar_item nav_bar_config">Cài đặt WiFi</a>
             </li>
             <li class="nav_bar_li nav_bar_float_right">
-                <a href="about.html" class="nav_bar_item nav_bar_about">About</a>
+                <a href="about.html" class="nav_bar_item nav_bar_about">Giới thiệu</a>
             </li>
         </ul>
     </nav>
     <div class="title">
         <h1>
-            WiFi->Config
+            Thiết bị->WiFi->Cài đặt
         </h1>
     </div>
     <div class="body">
         <div class="body-row">
             <div class="body-col">
                 <div style="text-align: left;">
-                    <h2>WiFi Configuration</h2>
+                    <h2>Cài đặt WiFi</h2>
                     <div>
                         <ul class="info_list">
-                            <h3>Current Configuration</h3>
-                            <p>This is the current wifi configuration of the device</p>
+                            <h3>Cài đặt hiện tại</h3>
+                            <p>Đây là cài đặt WiFi hiện tại của thiết bị</p>
                             <li style="margin-left: 20px;">
                                 <p>SSID: %SSID%</p>
                             </li>
@@ -49,24 +49,24 @@
                     </div>
                     <div class="manual">
                         <ul>
-                            <h3>How to use?</h3>
-                            <p>Input the new SSID and PASSWORD to these field, and press the "Config!" button.</p>
+                            <h3>Làm sao để sử dụng?</h3>
+                            <p>Nhập SSID và PASSWORD mới vào các ô tương ứng, và nhấn nút "Config!"</p>
                         </ul>
                     </div>
                 </div>
             </div>
             <div class="body-col">
                 <div style="text-align: left;">
-                    <h2>New WiFi Configuration</h2>
-                    <p>Enter new SSID and PASSWORD below</p>
+                    <h2>Cài đặt WiFi mới</h2>
+                    <p>Hãy nhập SSID và PASSWORD mới vào ô bên dưới</p>
                     <form>
-                       <fieldset>
-                           <legend>New Configuration</legend>
-                        <h4>SSID</h4>   
-                        <input type="text" id="ssid">
-                        <h4>PASSWORD</h4>
-                        <input type="text" id="pass">
-                       </fieldset>
+                        <fieldset>
+                            <legend>Cài đặt mới</legend>
+                            <h4>SSID</h4>
+                            <input type="text" id="ssid">
+                            <h4>PASSWORD</h4>
+                            <input type="text" id="pass">
+                        </fieldset>
                     </form>
                     <br>
                     <button onclick="sendConfig()">Config!</button>
